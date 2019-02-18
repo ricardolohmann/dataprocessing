@@ -1,0 +1,55 @@
+version: '3'
+services:
+
+  broker:
+    image: ${RABBITMQ_IMAGE}
+    hostname: broker
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    ports:
+      - 15672:15672
+      - 5672:5672
+      - 25676:25676
+
+  collector:
+    hostname: collector
+    build: collector
+    restart: on-failure
+    depends_on:
+      - broker
+    command: ["./wait-for-it.sh", "broker:5672", "--strict", "--", "python", "run.py"]
+    volumes:
+      - ./collector:/app
+
+  processor:
+    hostname: processor
+    build: processor
+    restart: always
+    depends_on:
+      - broker
+    command: ["./wait-for-it.sh", "broker:5672", "--strict", "--", "python", "run.py"]
+    volumes:
+      - ./processor:/app
+
+  storage:
+    image: ${STORAGE_IMAGE}
+    hostname: storage
+    image: percona
+    restart: always
+    environment:
+      MYSQL_DATABASE: db
+      MYSQL_ROOT_PASSWORD: 12345
+      # Try to remove volumes if experienced some issue by trying to use the
+      # following settings: `docker-compose rm -v`
+
+      # MYSQL_USER: db_user
+      # MYSQL_PASSWORD: 123456
+    volumes:
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+
+  storage-adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080

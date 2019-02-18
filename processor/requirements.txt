@@ -1,0 +1,3 @@
+googlemaps==3.0.2
+pika==0.13.0
+PyMySQL==0.9.3
